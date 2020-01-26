@@ -19,23 +19,24 @@ k3 = 0.1752
 p1 = -0.0007
 p2 = -0.0064
 
-cameraMatrix = [
-    [fX2Pixel ,0 ,cX2Pixel ],
-    [0 ,fY2Pixel ,cY2Pixel ],
-    [0 ,0  ,0  ]
-]
-distCoeffs = [k1 ,k2 ,p1 ,p2 ,k3]
+cameraMatrix = np.asarray([
+    [fX2Pixel ,0        ,cX2Pixel ],
+    [0        ,fY2Pixel ,cY2Pixel ],
+    [0        ,0        ,0        ]
+])
+distCoeffs = np.asarray([k1 ,k2 ,p1 ,p2 ,k3])
 fX2Meter = fX2Pixel * sX
 fY2Meter = fY2Pixel * sY
 cX2Meter = cX2Pixel * sX
 cY2Meter = cY2Pixel * sY
 
-arucoLength = 0.1
+arucoLength = 0.029
 cap = cv2.VideoCapture(2)
 while (cap.isOpened()):
+    newcameramatrix = np.zeros((3,3))
     _, tempMat = cap.read()
-    # undistorted = np.zeros((tempMat.shape[0],tempMat.shape[1]), np.uint8)
-    # undistorted = cv2.undistort(tempMat, cv2.UMat(cameraMatrix), distCoeffs, None, cameraMatrix)    
+    undistorted = np.zeros((tempMat.shape[0],tempMat.shape[1]), np.uint8)
+    undistorted = cv2.undistort(tempMat,cameraMatrix,distCoeffs,None,newcameramatrix)  
     gray = cv2.cvtColor(tempMat, cv2.COLOR_BGR2GRAY)
     aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
     parameters =  aruco.DetectorParameters_create()
@@ -45,7 +46,6 @@ while (cap.isOpened()):
     cv2.imshow("arucoes drawed",frame_markers)
     arucoList = []
     if ids is not None:
-        
         for i in range(len(ids)):
             corner2Pix = corners[i][0]
             corner2metre = np.zeros((4,2))
@@ -56,17 +56,12 @@ while (cap.isOpened()):
                 corner2metre[row][1] = (corner2Pix[row][1] * sY) - cY2Meter
                 kc[row][0] = corner2metre[row][0] / fX2Meter
                 kc[row][1] = corner2metre[row][1] / fY2Meter
-                
             Q = [
                 [kc[1][0] ,kc[3][0] ,-kc[0][0] ],
                 [kc[1][1] ,kc[3][1] ,-kc[0][1] ],
                 [    1    ,    1    ,    -1    ]
             ]
-            # print('Q is:')
-            # print (Q)
             Qinv = np.linalg.inv(Q)
-            # print('Q inverse is:')
-            # print(Qinv)
             L0 = [kc[2][0] ,kc[2][1] ,1]
             L = np.zeros(3)
             for j in range(0,3):
@@ -85,7 +80,4 @@ while (cap.isOpened()):
             # center3D = np.zeros((0,0,0))
             arucoList.append(square(corner2metre,corners3D,arucoLength,kc,ids[i]))
             print(corners3D)
-            # print(arucoList[0].realCorners)
-    # print("square id is: ",ids[i])
-    
     cv2.waitKey(100)
