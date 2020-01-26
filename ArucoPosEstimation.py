@@ -5,6 +5,14 @@ from cv2 import aruco
 from numpy.linalg import inv
 from square import square
 
+def world2image(point3D,focalX,focalY,centerX,centerY,sX,sY):
+    row = (point3D[0]*(focalX*sX)/point3D[2])
+    row /= sY
+    row = int(-(row-centerY))
+    col = (point3D[1]*(focalY*sX)/point3D[2])
+    col /= sX
+    col = int(-(col-centerX))
+    return (row,col)
 sX = 0.0000025
 sY = 0.0000033
 
@@ -22,7 +30,7 @@ p2 = -0.0064
 cameraMatrix = np.asarray([
     [fX2Pixel ,0        ,cX2Pixel ],
     [0        ,fY2Pixel ,cY2Pixel ],
-    [0        ,0        ,0        ]
+    [0        ,0        ,1        ]
 ])
 distCoeffs = np.asarray([k1 ,k2 ,p1 ,p2 ,k3])
 fX2Meter = fX2Pixel * sX
@@ -31,18 +39,29 @@ cX2Meter = cX2Pixel * sX
 cY2Meter = cY2Pixel * sY
 
 arucoLength = 0.029
-cap = cv2.VideoCapture(2)
+cap = cv2.VideoCapture(0)
 while (cap.isOpened()):
-    newcameramatrix = np.zeros((3,3))
     _, tempMat = cap.read()
-    undistorted = np.zeros((tempMat.shape[0],tempMat.shape[1]), np.uint8)
-    undistorted = cv2.undistort(tempMat,cameraMatrix,distCoeffs,None,newcameramatrix)  
+    h,  w = tempMat.shape[:2]
+    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(cameraMatrix,distCoeffs,(w,h),1,(w,h))
+    undistorted = cv2.undistort(tempMat,cameraMatrix,distCoeffs,newcameramtx)
+    print('type of undistorted: ',type(undistorted))
+    cv2.imshow("undistorted",undistorted)  
     gray = cv2.cvtColor(tempMat, cv2.COLOR_BGR2GRAY)
     aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
     parameters =  aruco.DetectorParameters_create()
     corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
     frame_markers = aruco.drawDetectedMarkers(tempMat.copy(), corners, ids)
-
+    pointA=(0.0720401,-0.0127199,0.278)
+    pointB=(-0.109992,0.0291681,0.278)
+    color=(0,255,0)
+    row,col = world2image(pointA,fX2Pixel,fY2Pixel,cX2Pixel,cY2Pixel,sX,sY)
+    centerCoordinate1 = (int(col),int(row))
+    row,col = world2image(pointB,fX2Pixel,fY2Pixel,cX2Pixel,cY2Pixel,sX,sY)
+    centerCoordinate2 = (int(col),int(row))
+    cv2.circle(frame_markers,centerCoordinate1,2,color, thickness=1, lineType=8, shift=0)
+    cv2.circle(frame_markers,centerCoordinate2,2,color, thickness=1, lineType=8, shift=0)
+    # print('image coordinate : ',centerCoordinate)
     cv2.imshow("arucoes drawed",frame_markers)
     arucoList = []
     if ids is not None:
