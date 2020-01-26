@@ -1,6 +1,5 @@
 import numpy as np
 class square:
-    
     def __init__(self,imageCs,realCs,l,_kc,ID):
         self.imageCorners = imageCs
         self.realCorners = realCs
